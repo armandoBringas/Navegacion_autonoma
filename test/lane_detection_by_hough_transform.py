@@ -1,4 +1,4 @@
-import scr.ProcessImage.HoughTransform.HoughTransform as HoughTransform
+import scr.LaneDetection.HoughTransform.HoughTransform as HoughTransform
 import matplotlib.pyplot as plt
 import cv2
 

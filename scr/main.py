@@ -1,7 +1,8 @@
+import numpy as np
 from controller import Display, Keyboard
 from vehicle import Car, Driver
 from SimpleController.SimpleController import SimpleController
-from ProcessImage.HoughTransform.HoughTransform import HoughTransform
+from LaneDetection.HoughTransform.HoughTransform import HoughTransform
 import cv2
 from datetime import datetime
 import os
@@ -12,7 +13,7 @@ def main():
     manual_steering = 0
     steering_angle = 0
     angle = 0.0
-    speed = 30
+    speed = 2
 
     # Create the Robot instance
     robot = Car()
@@ -33,13 +34,24 @@ def main():
     keyboard = Keyboard()
     keyboard.enable(time_step)
 
+    # ROI vertices
+    vertices = np.array([[
+        (0, 32),
+        (128, 32),
+        (128, 64),
+        (0, 64)
+    ]], dtype=np.int32)
+
     while robot.step() != -1:
         # Get image from camera
         image = SimpleController.get_image_from_camera(camera)
 
         # Process and display the image
-        grey_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-        simple_controller.display_image(displayed_img, grey_image)
+        # print(grey_image.shape) 64, 128
+
+        lane_lines = HoughTransform(image, vertices, flip=True).img_lane_lines()
+
+        simple_controller.display_image(displayed_img, lane_lines)
 
         # Read keyboard
         key = keyboard.getKey()
