@@ -2,6 +2,7 @@ from controller import Display, Keyboard
 from vehicle import Car, Driver
 from SimpleController.SimpleController import SimpleController
 from ProcessImage.HoughTransform.HoughTransform import HoughTransform
+import cv2
 from datetime import datetime
 import os
 
@@ -37,7 +38,7 @@ def main():
         image = SimpleController.get_image_from_camera(camera)
 
         # Process and display the image
-        grey_image = HoughTransform.greyscale_cv2(image)
+        grey_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         simple_controller.display_image(displayed_img, grey_image)
 
         # Read keyboard
