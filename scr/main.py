@@ -1,10 +1,9 @@
 from controller import Display, Keyboard, Robot, Camera
 from vehicle import Car, Driver
-import SimpleController
+from scr.SimpleController.SimpleController import SimpleController
+from scr.LaneDetection.LaneDetection import LaneDetection
 from datetime import datetime
 import os
-
-from scr.SimpleController.SimpleController import SimpleController
 
 
 def main():
@@ -38,7 +37,7 @@ def main():
         image = SimpleController.get_image_from_camera(camera)
 
         # Process and display the image
-        grey_image = SimpleController.greyscale_cv2(image)
+        grey_image = LaneDetection.greyscale_cv2(image)
         simple_controller.display_image(displayed_img, grey_image)
 
         # Read keyboard

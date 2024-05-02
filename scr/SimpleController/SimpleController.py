@@ -1,6 +1,5 @@
 from controller import Display
 import numpy as np
-import cv2
 
 
 class SimpleController:
@@ -24,15 +23,6 @@ class SimpleController:
         raw_image = camera.getImage()
         return np.frombuffer(raw_image, np.uint8).reshape(
             (camera.getHeight(), camera.getWidth(), 4))
-
-    @staticmethod
-    def greyscale_cv2(image):
-        """
-        Processing image to greyscale
-        :param image:
-        :return:
-        """
-        return cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
     @staticmethod
     def display_image(display, image):
