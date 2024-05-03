@@ -3,17 +3,16 @@ from vehicle import Car, Driver
 import numpy as np
 import cv2
 
-
-
 # Constants for lane detection and control
-CONTROL_COEFFICIENT = 0.005
+CONTROL_COEFFICIENT = 0.010
 SHOW_IMAGE_WINDOW = True
 
 # Initial angle and speed settings
 manual_steering = 0
 steering_angle = 0
 angle = 0.0
-speed = 20  # Set initial cruising speed to 30 km/h
+speed = 45  # Set initial cruising speed to 45 km/h
+
 
 def get_image(camera):
     raw_image = camera.getImage()
@@ -28,12 +27,14 @@ def get_image(camera):
         image = cv2.cvtColor(image, cv2.COLOR_RGBA2RGB)
     return image
 
+
 def greyscale_cv2(image):
     gray_img = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     return gray_img
 
+
 def display_image(display, image):
-    image_rgb = np.dstack((image, image, image,))
+    image_rgb = np.dstack((image, image, image))
     image_ref = display.imageNew(
         image_rgb.tobytes(),
         Display.RGB,
@@ -42,16 +43,55 @@ def display_image(display, image):
     )
     display.imagePaste(image_ref, 0, 0, False)
 
+
 def set_speed(driver, kmh):
     global speed
     speed = kmh
     driver.setCruisingSpeed(speed)
 
+
 def set_steering_angle(driver, wheel_angle):
     global angle, steering_angle
-    # Implement steering control logic if needed
     angle = wheel_angle  # Update the global angle
     driver.setSteeringAngle(angle)
+
+
+def process_image(img):
+    gray_img = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
+    blur_img = cv2.GaussianBlur(gray_img, (5, 5), 0)
+    edges = cv2.Canny(blur_img, 40, 60)
+    return edges
+
+def detect_lines(edges):
+    return cv2.HoughLinesP(edges, 2, np.pi/180, 40, minLineLength=50, maxLineGap=10)
+
+
+def draw_lines(img_slice, lines):
+    if lines is not None:
+        for line in lines:
+            x1, y1, x2, y2 = line[0]
+            cv2.line(img_slice, (x1, y1), (x2, y2), (0, 255, 0), 2)  # Draw lines in green
+
+
+def calculate_steering(lines, width):
+    if lines is not None:
+        best_line = min(lines, key=lambda line: (
+            abs((line[0][0] + line[0][2]) / 2 - width / 2) +
+            10 * abs(line[0][2] - line[0][0]) / (abs(line[0][3] - line[0][1]) + 1)
+        ))
+        return calculate_steering_correction(best_line, width)
+    return 0
+
+
+def calculate_steering_correction(best_line, width):
+    x1, y1, x2, y2 = best_line[0]
+    if (x2 - x1) != 0:
+        slope = (y2 - y1) / (x2 - x1)
+        angle_from_vertical = np.arctan(slope) * 180 / np.pi
+        center_distance = abs((x1 + x2) / 2 - width / 2)
+        adjustment_factor = max(1, center_distance / (width / 4))
+        return -angle_from_vertical * CONTROL_COEFFICIENT * adjustment_factor
+    return 0
 
 
 def regulate(driver, camera):
@@ -61,26 +101,15 @@ def regulate(driver, camera):
         return
 
     height, width, _ = img.shape
-    roi_height_start = int(height * 0.6)
-    img_slice = img[roi_height_start:, :]
-
-    gray_img = cv2.cvtColor(img_slice, cv2.COLOR_RGB2GRAY)
-    blur_img = cv2.GaussianBlur(gray_img, (5, 5), 0)
-    edges = cv2.Canny(blur_img, 50, 150)
-
-    lines = cv2.HoughLinesP(edges, 1, np.pi/180, 30, minLineLength=40, maxLineGap=100)
-    lines_image = np.zeros((height - roi_height_start, width, 3), dtype=np.uint8)
-
-    if lines is not None:
-        for line in lines:
-            for x1, y1, x2, y2 in line:
-                cv2.line(lines_image, (x1, y1), (x2, y2), (0, 255, 0), 2)
-        cv2.imshow('Detected Lines', lines_image)
-    else:
-        print("No lines detected.")
-
+    img_slice = img[int(height * 0.6):, :]
+    edges = process_image(img_slice)
+    lines = detect_lines(edges)
+    draw_lines(img_slice, lines)
+    steering_correction = calculate_steering(lines, width)
+    driver.setSteeringAngle(steering_correction)
+    print(f"Steering adjusted by: {steering_correction} degrees")
     cv2.imshow('Edges', edges)
-    cv2.imshow('ROI', img_slice)
+    cv2.imshow('ROI with Lines', img_slice)
     cv2.waitKey(1)
 
 
@@ -98,8 +127,8 @@ def main():
     keyboard = Keyboard()
     keyboard.enable(timestep)
 
-    set_speed(driver, speed)  # Set initial speed
-    set_steering_angle(driver, angle)  # Set initial steering angle
+    set_speed(driver, speed)
+    set_steering_angle(driver, angle)
 
     while robot.step() != -1:
         image = get_image(camera)
@@ -107,8 +136,8 @@ def main():
             grey_image = greyscale_cv2(image)
             display_image(display_img, grey_image)
 
-        current_speed = driver.getCurrentSpeed()  # Retrieve the current speed of the vehicle
-        regulate(driver, camera)  # Integrate lane detection into the control loop with current speed
+        current_speed = driver.getCurrentSpeed()
+        regulate(driver, camera)
 
         key = keyboard.getKey()
         if key == Keyboard.UP:
@@ -122,6 +151,7 @@ def main():
 
     if SHOW_IMAGE_WINDOW:
         cv2.destroyAllWindows()
+
 
 if __name__ == "__main__":
     main()
