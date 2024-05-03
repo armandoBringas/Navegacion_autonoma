@@ -32,7 +32,7 @@ class HoughTransform:
         cv2.rectangle(mask, (0, 0), (mask.shape[1], int(mask.shape[0] * 0.5)), 255, thickness=-1)
         return cv2.bitwise_and(self.img_canny, mask)
 
-    def img_lane_lines(self):
+    def detect_lanes(self):
         img_roi_mask = self.img_roi_mask()
         lines = cv2.HoughLinesP(img_roi_mask,
                                 self.rho, self.theta,
@@ -50,3 +50,5 @@ class HoughTransform:
         combined_image = cv2.addWeighted(self.img_rgb, self.alpha, line_image, self.beta, self.gamma)
 
         return combined_image
+
+

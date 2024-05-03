@@ -3,6 +3,7 @@ from controller import Display, Keyboard
 from vehicle import Car, Driver
 from SimpleController.SimpleController import SimpleController
 from LaneDetection.HoughTransform.HoughTransform import HoughTransform
+from LaneDetection.SteeringController.SteeringController import SteeringController
 import cv2
 from datetime import datetime
 import os
@@ -13,7 +14,7 @@ def main():
     manual_steering = 0
     steering_angle = 0
     angle = 0.0
-    speed = 2
+    speed = 10
 
     # Create the Robot instance
     robot = Car()
@@ -42,16 +43,21 @@ def main():
         (0, 64)
     ]], dtype=np.int32)
 
+    # Initialization of the SteeringController
+    steering_controller = SteeringController(kp=0.01)
+
     while robot.step() != -1:
         # Get image from camera
         image = SimpleController.get_image_from_camera(camera)
 
-        # Process and display the image
-        # print(grey_image.shape) 64, 128
+        # Image processing to detect lanes
+        hough_transform = HoughTransform(image, vertices, flip=True)
+        lane_image = hough_transform.detect_lanes()
+        simple_controller.display_image(displayed_img, lane_image)
 
-        lane_lines = HoughTransform(image, vertices, flip=True).img_lane_lines()
-
-        simple_controller.display_image(displayed_img, lane_lines)
+        # Calculation of steering angle
+        steering_angle = steering_controller.calculate_steering_angle(lane_image)
+        driver.setSteeringAngle(steering_angle)
 
         # Read keyboard
         key = keyboard.getKey()
